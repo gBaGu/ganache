@@ -88,7 +88,11 @@ export class RuntimeBlock {
     gasLimit: bigint;
     gasUsed: bigint;
     timestamp: bigint;
-    baseFeePerGas?: bigint;
+    mixHash: Buffer;
+    // prevRandao is mixHash, but for the merge and it must be
+    // given to the VM this way
+    prevRandao: Buffer;
+    baseFeePerGas: bigint | undefined;
   };
 
   constructor(
@@ -100,7 +104,8 @@ export class RuntimeBlock {
     timestamp: Quantity,
     difficulty: Quantity,
     previousBlockTotalDifficulty: Quantity,
-    baseFeePerGas?: bigint
+    mixHash: Buffer,
+    baseFeePerGas: bigint | undefined
   ) {
     const ts = timestamp.toBuffer();
     const coinbaseBuffer = coinbase.toBuffer();
@@ -115,7 +120,9 @@ export class RuntimeBlock {
       gasLimit: Quantity.toBigInt(gasLimit),
       gasUsed: Quantity.toBigInt(gasUsed),
       timestamp: Quantity.toBigInt(ts),
-      baseFeePerGas: baseFeePerGas === undefined ? 0n : baseFeePerGas
+      baseFeePerGas: baseFeePerGas === undefined ? 0n : baseFeePerGas,
+      mixHash: mixHash || BUFFER_32_ZERO,
+      prevRandao: mixHash
     };
     // When forking we might get a block that doesn't have a baseFeePerGas value,
     // but EIP-1559 might be active on our chain. We need to keep track on if
@@ -153,7 +160,7 @@ export class RuntimeBlock {
       gasUsed === 0n ? BUFFER_EMPTY : Quantity.toBuffer(gasUsed),
       Quantity.toBuffer(header.timestamp),
       extraData.toBuffer(),
-      BUFFER_32_ZERO, // mixHash
+      header.mixHash,
       BUFFER_8_ZERO // nonce
     ];
     if (this.serializeBaseFeePerGas && header.baseFeePerGas !== undefined) {
